@@ -10,7 +10,8 @@ typedef struct {
 	EngineSquare *board;
 	unsigned width;
 	unsigned height;
-	int opened;
+	unsigned opened;
+	int mines;
 	int flags;
 } Engine;
 
@@ -25,3 +26,4 @@ void engine_coords (Engine *engine, EngineSquare *square, unsigned *x, unsigned 
 unsigned engine_count (Engine *engine, EngineSquare *square, EngineSquare type);
 AssetId engine_open (Engine *engine, EngineSquare *square);
 AssetId engine_flag (Engine *engine, EngineSquare *square);
+AssetId engine_reveal (EngineSquare *square, AssetId unmarked_mine);

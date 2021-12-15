@@ -11,10 +11,11 @@ void engine_free (Engine *engine) {
 	engine->board = NULL;
 }
 
-void engine_alloc (Engine *engine, unsigned width, unsigned height, int flags) {
+void engine_alloc (Engine *engine, unsigned width, unsigned height, int mines) {
 	engine_free(engine);
 	engine->opened = 0;
-	engine->flags = flags;
+	engine->flags = mines;
+	engine->mines = mines;
 	engine->width = width;
 	engine->height = height;
 	engine->board = calloc(width * height, sizeof(EngineSquare));
@@ -64,8 +65,8 @@ AssetId engine_open (Engine *engine, EngineSquare *square) {
 	if (*square & (Flag | Open)) return -1;
 	*square |= Open;
 	if (!engine->opened) engine_plant(engine);
-	engine->opened++;
 	if (*square & Mine) return 11;
+	engine->opened++;
 	return engine_count(engine, square, Mine);
 }
 
@@ -74,4 +75,10 @@ AssetId engine_flag (Engine *engine, EngineSquare *square) {
 	const int flagged = (*square ^= Flag) & Flag;
 	engine->flags += flagged ? -1 : 1;
 	return 9 + flagged;
+}
+
+AssetId engine_reveal (EngineSquare *square, AssetId unmarked_mine) {
+	if (*square == Mine) return unmarked_mine;
+	if (*square == Flag) return 13;
+	return -1;
 }

@@ -10,6 +10,7 @@
 static GtkWidget *game_board = NULL;
 static GtkWidget *flags = NULL;
 static Engine engine = {0};
+static bool is_game_over;
 
 static const char *ASSETS[] = {
 	"assets/open.png",
@@ -24,6 +25,8 @@ static const char *ASSETS[] = {
 	"assets/closed.png",
 	"assets/flag.png",
 	"assets/clicked_mine.png",
+	"assets/mine.png",
+	"assets/no_mine.png",
 };
 
 gchar *stringify(int n) {
@@ -32,18 +35,35 @@ gchar *stringify(int n) {
 	return s;
 }
 
+static void board_update (GtkWidget *event_box, AssetId result) {
+	if (result == -1) return;
+	gtk_image_set_from_file (
+		GTK_IMAGE (gtk_bin_get_child (GTK_BIN (event_box))),
+		ASSETS[result]
+	);
+}
+
+static void game_over (AssetId unmarked_mine) {
+	unsigned x, y;
+	is_game_over = true;
+	for (y = 0; y < engine.height; y += 1) {
+		for (x = 0; x < engine.width; x += 1) {
+			board_update(
+				gtk_grid_get_child_at (GTK_GRID (game_board), x, y),
+				engine_reveal (engine_ptr (&engine, x, y), unmarked_mine)
+			);
+		}
+	}
+}
+
 static void board_open_neighbors (unsigned x, unsigned y);
 
 static void board_open (unsigned x, unsigned y) {
 	GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID (game_board), x, y);
 	AssetId result = engine_open(&engine, engine_ptr(&engine, x, y));
 	if (result == 0) board_open_neighbors(x, y);
-	if (result != -1) {
-		gtk_image_set_from_file (
-			GTK_IMAGE (gtk_bin_get_child (GTK_BIN (event_box))),
-			ASSETS[result]
-		);
-	}
+	if (result == 11) game_over(12);
+	board_update(event_box, result);
 }
 
 static void board_open_neighbors (unsigned x, unsigned y) {
@@ -64,31 +84,29 @@ static void board_click (GtkWidget *event_box, gpointer event, gpointer square) 
 	unsigned x, y;
 	AssetId result;
 
+	if (is_game_over) return;
 	gdk_event_get_button (event, &button);
 	engine_coords(&engine, square, &x, &y);
 	switch (button) {
 	/* left click */
 	case 1:
 		board_open(x, y);
-		return;
+		break;
 	/* middle click */
 	case 2:
 		if (engine_count(&engine, square, Flag) == engine_count(&engine, square, Mine)) {
 			board_open_neighbors(x, y);
-			return;
 		}
 		break;
 	/* right click */
 	case 3:
 		result = engine_flag(&engine, square);
 		gtk_label_set_text(GTK_LABEL (flags), stringify(engine.flags));
-		if (result != -1) {
-			gtk_image_set_from_file (
-				GTK_IMAGE (gtk_bin_get_child (GTK_BIN (event_box))),
-				ASSETS[result]
-			);
-		}
-		break;
+		board_update(event_box, result);
+		return;
+	}
+	if (engine.opened == engine.width * engine.height - engine.mines) {
+		game_over(10);
 	}
 }
 
@@ -97,6 +115,7 @@ static void board_click (GtkWidget *event_box, gpointer event, gpointer square) 
 static void board_init (GtkWidget *widget, gpointer data) {
 	unsigned x, y;
 
+	is_game_over = false;
 	engine_alloc(&engine, SIZE, SIZE, SIZE);
 	gtk_label_set_text(GTK_LABEL (flags), stringify(engine.flags));
 
@@ -133,7 +152,7 @@ void gui_activate (GtkApplication *app) {
 
 	/* Structure */
 	gtk_container_add (GTK_CONTAINER (window), grid);
-	gtk_grid_attach (GTK_GRID (grid), flags, 0, 1, 1, 1);
+	gtk_grid_attach (GTK_GRID (grid), flags, 1, 1, 1, 1);
 	gtk_grid_attach (GTK_GRID (grid), game_board, 0, 2, 3, 1);
 
 	/* Properties */
@@ -143,6 +162,7 @@ void gui_activate (GtkApplication *app) {
 	gtk_widget_set_margin_start (game_board, 19);
 	gtk_widget_set_margin_end (game_board, 19);
 
+	srand (time (NULL));
 	board_init (NULL, NULL);
 	gtk_widget_show_all (window);
 }
