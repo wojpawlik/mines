@@ -1,16 +1,16 @@
 /* Wojciech Pawlik */
 
-#include <assert.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 #include "engine.h"
 #include "gui.h"
 
-static GtkWidget *game_board = NULL;
-static GtkWidget *flags = NULL;
+static GtkWidget *game_board, *flags, *stopwatch;
 static Engine engine = {0};
 static bool is_game_over;
+static GTimer *timer;
 
 static const char *ASSETS[] = {
 	"assets/open.png",
@@ -29,8 +29,8 @@ static const char *ASSETS[] = {
 	"assets/no_mine.png",
 };
 
-gchar *stringify(int n) {
-	static gchar s[5];
+gchar *stringify(int16_t n) {
+	static gchar s[6];
 	sprintf(s, "%d", n);
 	return s;
 }
@@ -41,6 +41,14 @@ static void board_update (GtkWidget *event_box, AssetId result) {
 		GTK_IMAGE (gtk_bin_get_child (GTK_BIN (event_box))),
 		ASSETS[result]
 	);
+}
+
+gboolean time_update (void*) {
+	gtk_label_set_text(
+		GTK_LABEL (stopwatch),
+		stringify (round (g_timer_elapsed (timer, NULL)))
+	);
+	return !is_game_over;
 }
 
 static void game_over (AssetId unmarked_mine) {
@@ -79,7 +87,7 @@ static void board_open_neighbors (unsigned x, unsigned y) {
 	board_open(x + 1, y + 1);
 }
 
-static void board_click (GtkWidget *event_box, gpointer event, gpointer square) {
+static void board_click (GtkWidget *event_box, gpointer event, EngineSquare *square) {
 	guint button;
 	unsigned x, y;
 	AssetId result;
@@ -90,11 +98,15 @@ static void board_click (GtkWidget *event_box, gpointer event, gpointer square) 
 	switch (button) {
 	/* left click */
 	case 1:
+		if (engine.opened == 0) {
+			g_timer_start (timer);
+			g_timeout_add (250, time_update, NULL);
+		}
 		board_open(x, y);
 		break;
 	/* middle click */
 	case 2:
-		if (engine_count(&engine, square, Flag) == engine_count(&engine, square, Mine)) {
+		if (*square == Open && engine_count(&engine, square, Flag) == engine_count(&engine, square, Mine)) {
 			board_open_neighbors(x, y);
 		}
 		break;
@@ -112,11 +124,12 @@ static void board_click (GtkWidget *event_box, gpointer event, gpointer square) 
 
 #define SIZE 10
 
-static void board_init (GtkWidget *widget, gpointer data) {
+static void board_init (GtkWidget*, gpointer) {
 	unsigned x, y;
 
 	is_game_over = false;
 	engine_alloc(&engine, SIZE, SIZE, SIZE);
+	gtk_label_set_text(GTK_LABEL (stopwatch), "0");
 	gtk_label_set_text(GTK_LABEL (flags), stringify(engine.flags));
 
 
@@ -142,25 +155,32 @@ static void board_init (GtkWidget *widget, gpointer data) {
 }
 
 void gui_activate (GtkApplication *app) {
-	assert(game_board == NULL);
-	assert(flags == NULL);
-
+	PangoFontDescription* monospace = pango_font_description_from_string ("bold monospace");
 	GtkWidget *window = gtk_application_window_new (app);
 	GtkWidget *grid = gtk_grid_new ();
+	stopwatch = gtk_label_new ("");
 	game_board = gtk_grid_new ();
 	flags = gtk_label_new ("");
+	timer = g_timer_new ();
 
 	/* Structure */
 	gtk_container_add (GTK_CONTAINER (window), grid);
-	gtk_grid_attach (GTK_GRID (grid), flags, 1, 1, 1, 1);
+	gtk_grid_attach (GTK_GRID (grid), flags, 0, 1, 1, 1);
+	gtk_grid_attach (GTK_GRID (grid), stopwatch, 2, 1, 1, 1);
 	gtk_grid_attach (GTK_GRID (grid), game_board, 0, 2, 3, 1);
 
 	/* Properties */
 	gtk_window_set_resizable (GTK_WINDOW (window), false);
 	gtk_window_set_title (GTK_WINDOW (window), "Mines");
-	gtk_widget_set_margin_bottom (game_board, 19);
-	gtk_widget_set_margin_start (game_board, 19);
-	gtk_widget_set_margin_end (game_board, 19);
+	gtk_widget_set_halign (stopwatch, GTK_ALIGN_END);
+	gtk_widget_set_halign (flags, GTK_ALIGN_START);
+	gtk_widget_set_halign (grid, GTK_ALIGN_CENTER);
+	#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+	gtk_widget_override_font (stopwatch, monospace);
+	gtk_widget_override_font (flags, monospace);
+	gtk_widget_set_margin_bottom (grid, 19);
+	gtk_widget_set_margin_start (grid, 19);
+	gtk_widget_set_margin_end (grid, 19);
 
 	srand (time (NULL));
 	board_init (NULL, NULL);

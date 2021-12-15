@@ -1,6 +1,6 @@
 # Wojciech Pawlik
 
-CFLAGS =  -Wall -Wextra -Wno-unused-parameter `pkg-config --cflags --libs gtk+-3.0`
+CFLAGS = -Wall -Wextra -lm `pkg-config --cflags --libs gtk+-3.0`
 
 # Executable
 lib/mines: lib/gui.o lib/main.o lib/engine.o
