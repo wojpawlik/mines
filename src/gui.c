@@ -13,20 +13,20 @@ static bool is_game_over;
 static GTimer *timer;
 
 static const char *ASSETS[] = {
-	"assets/open.png",
-	"assets/one.png",
-	"assets/two.png",
-	"assets/three.png",
-	"assets/four.png",
-	"assets/five.png",
-	"assets/six.png",
-	"assets/seven.png",
-	"assets/eight.png",
-	"assets/closed.png",
-	"assets/flag.png",
-	"assets/clicked_mine.png",
-	"assets/mine.png",
-	"assets/no_mine.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/open.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/one.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/two.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/three.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/four.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/five.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/six.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/seven.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/eight.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/closed.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/flag.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/clicked_mine.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/mine.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/no_mine.png",
 };
 
 gchar *stringify(int16_t n) {
@@ -37,7 +37,7 @@ gchar *stringify(int16_t n) {
 
 static void board_update (GtkWidget *event_box, AssetId result) {
 	if (result == -1) return;
-	gtk_image_set_from_file (
+	gtk_image_set_from_resource (
 		GTK_IMAGE (gtk_bin_get_child (GTK_BIN (event_box))),
 		ASSETS[result]
 	);
@@ -140,7 +140,10 @@ static void board_init (GtkWidget*, gpointer) {
 		for (x = 0; x < SIZE; x += 1) {
 			/* Couldn't use Gtk.Button (and thus gtk4) because it adds padding */
 			GtkWidget *event_box = gtk_event_box_new ();
-			gtk_container_add(GTK_CONTAINER (event_box), gtk_image_new_from_file("assets/closed.png"));
+			gtk_container_add (
+				GTK_CONTAINER (event_box),
+				gtk_image_new_from_resource (ASSETS[9])
+			);
 			gtk_grid_attach (GTK_GRID (game_board), event_box, x, y, 1, 1);
 			g_signal_connect (
 				event_box,
