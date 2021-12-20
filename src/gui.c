@@ -22,24 +22,24 @@ static const char *ASSETS[] = {
 	"/pl/edu/uj/student/wojpawlik/mines/assets/six.png",
 	"/pl/edu/uj/student/wojpawlik/mines/assets/seven.png",
 	"/pl/edu/uj/student/wojpawlik/mines/assets/eight.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/closed.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/flag.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/clicked_mine.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/mine.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/no_mine.png",
 };
 
-gchar *stringify(int16_t n) {
+static const char *ASSET_CLOSED = "/pl/edu/uj/student/wojpawlik/mines/assets/closed.png";
+static const char *ASSET_FLAG = "/pl/edu/uj/student/wojpawlik/mines/assets/flag.png";
+static const char *ASSET_CLICKED_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/clicked_mine.png";
+static const char *ASSET_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/mine.png";
+static const char *ASSET_NO_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/no_mine.png";
+
+static gchar *stringify(int16_t n) {
 	static gchar s[6];
 	sprintf(s, "%d", n);
 	return s;
 }
 
-static void board_update (GtkWidget *event_box, AssetId result) {
-	if (result == -1) return;
+static void board_update (GtkWidget *event_box, const char *asset) {
 	gtk_image_set_from_resource (
 		GTK_IMAGE (gtk_bin_get_child (GTK_BIN (event_box))),
-		ASSETS[result]
+		asset
 	);
 }
 
@@ -52,15 +52,16 @@ static gboolean time_update (void*) {
 	return true;
 }
 
-static void game_over (AssetId unmarked_mine) {
+static void game_over (const char *unmarked_mine) {
 	unsigned x, y;
+	if (is_game_over) return;
 	is_game_over = true;
 	for (y = 0; y < engine.height; y += 1) {
 		for (x = 0; x < engine.width; x += 1) {
-			board_update(
-				gtk_grid_get_child_at (GTK_GRID (game_board), x, y),
-				engine_reveal (engine_ptr (&engine, x, y), unmarked_mine)
-			);
+			EngineSquare *square = engine_ptr (&engine, x, y);
+			GtkWidget *event_box = gtk_grid_get_child_at (GTK_GRID (game_board), x, y);
+			if (*square == Mine) board_update (event_box, unmarked_mine);
+			if (*square == Flag) board_update (event_box, ASSET_NO_MINE);
 		}
 	}
 }
@@ -68,11 +69,17 @@ static void game_over (AssetId unmarked_mine) {
 static void board_open_neighbors (unsigned x, unsigned y);
 
 static void board_open (unsigned x, unsigned y) {
-	GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID (game_board), x, y);
-	AssetId result = engine_open(&engine, engine_ptr(&engine, x, y));
-	if (result == 0) board_open_neighbors(x, y);
-	if (result == 11) game_over(12);
-	board_update(event_box, result);
+	GtkWidget *event_box = gtk_grid_get_child_at (GTK_GRID (game_board), x, y);
+	EngineSquare *square = engine_ptr (&engine, x, y);
+	if (!engine_open (&engine, square)) return;
+	if (*square & Mine) {
+		board_update (event_box, ASSET_CLICKED_MINE);
+		game_over(ASSET_MINE);
+		return;
+	}
+	unsigned count = engine_count (&engine, square, Mine);
+	if (count == 0) board_open_neighbors (x, y);
+	board_update (event_box, ASSETS[count]);
 }
 
 static void board_open_neighbors (unsigned x, unsigned y) {
@@ -91,7 +98,6 @@ static void board_open_neighbors (unsigned x, unsigned y) {
 static void board_click (GtkWidget *event_box, gpointer event, EngineSquare *square) {
 	guint button;
 	unsigned x, y;
-	AssetId result;
 
 	if (is_game_over) return;
 	gdk_event_get_button (event, &button);
@@ -113,13 +119,14 @@ static void board_click (GtkWidget *event_box, gpointer event, EngineSquare *squ
 		break;
 	/* right click */
 	case 3:
-		result = engine_flag(&engine, square);
-		gtk_label_set_text(GTK_LABEL (flags), stringify(engine.flags));
-		board_update(event_box, result);
+		engine_flag (&engine, square);
+		gtk_label_set_text (GTK_LABEL (flags), stringify (engine.flags));
+		if (*square & Flag) board_update (event_box, ASSET_FLAG);
+		else if (!(*square & Open)) board_update (event_box, ASSET_CLOSED);
 		return;
 	}
 	if (engine.opened == engine.width * engine.height - engine.mines) {
-		game_over(10);
+		game_over (ASSET_FLAG);
 	}
 }
 
@@ -143,7 +150,7 @@ static void board_init (void) {
 			GtkWidget *event_box = gtk_event_box_new ();
 			gtk_container_add (
 				GTK_CONTAINER (event_box),
-				gtk_image_new_from_resource (ASSETS[9])
+				gtk_image_new_from_resource (ASSET_CLOSED)
 			);
 			gtk_grid_attach (GTK_GRID (game_board), event_box, x, y, 1, 1);
 			g_signal_connect (

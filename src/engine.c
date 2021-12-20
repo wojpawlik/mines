@@ -1,10 +1,11 @@
 /* Wojciech Pawlik */
 
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include "engine.h"
 
-static const EngineSquare ZERO = 0;
+static const EngineSquare NOWHERE = Open;
 
 void engine_free (Engine *engine) {
 	free(engine->board);
@@ -22,7 +23,10 @@ void engine_alloc (Engine *engine, unsigned width, unsigned height, int mines) {
 }
 
 EngineSquare* engine_ptr (Engine *engine, unsigned x, unsigned y) {
-	if (x >= engine->width || y >= engine->height) return (EngineSquare*) &ZERO;
+	/* Avoids multiple bounds- and NULL-checks */
+	if (x >= engine->width || y >= engine->height) {
+		return (EngineSquare*) &NOWHERE;
+	}
 	return engine->board + y * engine->width + x;
 }
 
@@ -60,25 +64,16 @@ unsigned engine_count (Engine *engine, EngineSquare *square, EngineSquare type) 
 	);
 }
 
-AssetId engine_open (Engine *engine, EngineSquare *square) {
-	if (square == &ZERO) return -1;
-	if (*square & (Flag | Open)) return -1;
+bool engine_open (Engine *engine, EngineSquare *square) {
+	if (*square & (Flag | Open)) return false;
 	*square |= Open;
 	if (!engine->opened) engine_plant(engine);
-	if (*square & Mine) return 11;
 	engine->opened++;
-	return engine_count(engine, square, Mine);
+	return true;
 }
 
-AssetId engine_flag (Engine *engine, EngineSquare *square) {
-	if (*square & Open) return -1;
+void engine_flag (Engine *engine, EngineSquare *square) {
+	if (*square & Open) return;
 	const int flagged = (*square ^= Flag) & Flag;
 	engine->flags += flagged ? -1 : 1;
-	return 9 + flagged;
-}
-
-AssetId engine_reveal (EngineSquare *square, AssetId unmarked_mine) {
-	if (*square == Mine) return unmarked_mine;
-	if (*square == Flag) return 13;
-	return -1;
 }
