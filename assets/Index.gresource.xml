@@ -1,22 +1,23 @@
+<!-- Code by Wojciech Pawlik -->
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
 	<gresource prefix="/pl/edu/uj/student/wojpawlik/mines/assets/">
-		<file>clicked_mine.png</file>
-		<file>clicked_question.png</file>
-		<file>closed.png</file>
-		<file>eight.png</file>
-		<file>eigth.png</file>
-		<file>five.png</file>
-		<file>flag.png</file>
-		<file>four.png</file>
-		<file>mine.png</file>
-		<file>no_mine.png</file>
-		<file>one.png</file>
-		<file>open.png</file>
-		<file>question.png</file>
-		<file>seven.png</file>
-		<file>six.png</file>
-		<file>three.png</file>
-		<file>two.png</file>
+		<!-- Artwork: https://www.spriters-resource.com/custom_edited/minesweepercustoms/sheet/139692/ -->
+		<file>clicked_mine.gif</file>
+		<file>closed.gif</file>
+		<file>eight.gif</file>
+		<file>five.gif</file>
+		<file>flag.gif</file>
+		<file>four.gif</file>
+		<file>mine.gif</file>
+		<file>no_mine.gif</file>
+		<file>one.gif</file>
+		<file>open.gif</file>
+		<file>pressed.gif</file>
+		<file>seven.gif</file>
+		<file>six.gif</file>
+		<file>three.gif</file>
+		<file>two.gif</file>
+		<file>unflag.gif</file>
 	</gresource>
 </gresources>

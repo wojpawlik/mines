@@ -13,25 +13,27 @@ static bool is_game_over;
 static GTimer *timer;
 
 static const char *ASSETS[] = {
-	"/pl/edu/uj/student/wojpawlik/mines/assets/open.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/one.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/two.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/three.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/four.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/five.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/six.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/seven.png",
-	"/pl/edu/uj/student/wojpawlik/mines/assets/eight.png",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/open.gif",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/one.gif",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/two.gif",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/three.gif",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/four.gif",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/five.gif",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/six.gif",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/seven.gif",
+	"/pl/edu/uj/student/wojpawlik/mines/assets/eight.gif",
 };
 
-static const char *ASSET_CLOSED = "/pl/edu/uj/student/wojpawlik/mines/assets/closed.png";
-static const char *ASSET_FLAG = "/pl/edu/uj/student/wojpawlik/mines/assets/flag.png";
-static const char *ASSET_CLICKED_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/clicked_mine.png";
-static const char *ASSET_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/mine.png";
-static const char *ASSET_NO_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/no_mine.png";
+static const char *ASSET_CLICKED_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/clicked_mine.gif";
+static const char *ASSET_CLOSED = "/pl/edu/uj/student/wojpawlik/mines/assets/closed.gif";
+static const char *ASSET_FLAG = "/pl/edu/uj/student/wojpawlik/mines/assets/flag.gif";
+static const char *ASSET_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/mine.gif";
+static const char *ASSET_NO_MINE = "/pl/edu/uj/student/wojpawlik/mines/assets/no_mine.gif";
+static const char *ASSET_PRESSED = "/pl/edu/uj/student/wojpawlik/mines/assets/pressed.gif";
+static const char *ASSET_UNFLAG = "/pl/edu/uj/student/wojpawlik/mines/assets/unflag.gif";
 
 static gchar *stringify(int16_t n) {
-	static gchar s[6];
+	static gchar s[7];
 	sprintf(s, "%d", n);
 	return s;
 }
@@ -95,6 +97,28 @@ static void board_open_neighbors (unsigned x, unsigned y) {
 	board_open(x + 1, y + 1);
 }
 
+static void board_press_neighbors (int x, int y, const char *asset) {
+	int i, j;
+	for (i = -1; i <= 1; i++) for (j = -1; j <= 1; j++) {
+		EngineSquare *square = engine_ptr (&engine, x + i, y + j);
+		GtkWidget *event_box = gtk_grid_get_child_at (GTK_GRID (game_board), x + i, y + j);
+		if (!(*square & (Flag | Open))) board_update (event_box, asset);
+	}
+}
+
+static void board_press (GtkWidget *event_box, gpointer event, EngineSquare *square) {
+	guint button;
+	if (is_game_over) return;
+	gdk_event_get_button (event, &button);
+	if (button == 1 /* Left click */ && *square & ~Open) {
+		board_update (event_box, ASSET_PRESSED);
+	} else if (button == 2 /* middle click */) {
+		unsigned x, y;
+		engine_coords (&engine, square, &x, &y);
+		board_press_neighbors (x, y, ASSET_PRESSED);
+	}
+}
+
 static void board_click (GtkWidget *event_box, gpointer event, EngineSquare *square) {
 	guint button;
 	unsigned x, y;
@@ -115,6 +139,8 @@ static void board_click (GtkWidget *event_box, gpointer event, EngineSquare *squ
 	case 2:
 		if (*square == Open && engine_count(&engine, square, Flag) == engine_count(&engine, square, Mine)) {
 			board_open_neighbors(x, y);
+		} else {
+			board_press_neighbors (x, y, ASSET_CLOSED);
 		}
 		break;
 	/* right click */
@@ -122,7 +148,7 @@ static void board_click (GtkWidget *event_box, gpointer event, EngineSquare *squ
 		engine_flag (&engine, square);
 		gtk_label_set_text (GTK_LABEL (flags), stringify (engine.flags));
 		if (*square & Flag) board_update (event_box, ASSET_FLAG);
-		else if (!(*square & Open)) board_update (event_box, ASSET_CLOSED);
+		else if (!(*square & Open)) board_update (event_box, ASSET_UNFLAG);
 		return;
 	}
 	if (engine.opened == engine.width * engine.height - engine.mines) {
@@ -148,6 +174,7 @@ static void board_init (void) {
 		for (x = 0; x < width_; x++) {
 			/* Couldn't use Gtk.Button (and thus gtk4) because it adds padding */
 			GtkWidget *event_box = gtk_event_box_new ();
+			EngineSquare *square = engine_ptr (&engine, x, y);
 			gtk_container_add (
 				GTK_CONTAINER (event_box),
 				gtk_image_new_from_resource (ASSET_CLOSED)
@@ -157,7 +184,13 @@ static void board_init (void) {
 				event_box,
 				"button-release-event",
 				G_CALLBACK (board_click),
-				engine_ptr(&engine, x, y)
+				square
+			);
+			g_signal_connect (
+				event_box,
+				"button-press-event",
+				G_CALLBACK (board_press),
+				square
 			);
 		}
 	}
@@ -210,6 +243,7 @@ static void gui_difficulty_init (void) {
 	height = gtk_spin_button_new_with_range (9, 16, 1);
 	width = gtk_spin_button_new_with_range (9, 30, 1);
 	difficulty = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+	GtkWidget *credits = gtk_label_new (NULL);
 	GtkWidget *grid = gtk_grid_new ();
 
 	/* Structure */
@@ -228,6 +262,7 @@ static void gui_difficulty_init (void) {
 	gtk_grid_attach (GTK_GRID (grid), intermediate,	3, 2, 1, 1);
 	gtk_grid_attach (GTK_GRID (grid), expert,	3, 3, 1, 1);
 	gtk_grid_attach (GTK_GRID (grid), custom,	3, 4, 1, 1);
+	gtk_grid_attach (GTK_GRID (grid), credits,	1, 5, 3, 1);
 
 	/* Signals */
 	g_signal_connect (G_OBJECT (beginner),	"clicked",	G_CALLBACK (difficulty_set_preset),	DIFFICULTIES);
@@ -249,6 +284,11 @@ static void gui_difficulty_init (void) {
 	gtk_widget_set_margin_bottom (grid, 6);
 	gtk_widget_set_margin_start (grid, 6);
 	gtk_widget_set_margin_end (grid, 6);
+	gtk_label_set_markup (
+		GTK_LABEL (credits),
+		"Game by <a href=\"https://github.com/wojpawlik\">Wojciech Pawlik</a>, "
+		"artwork by <a href=\"https://www.spriters-resource.com/submitter/striker212/\">striker212</a>"
+	);
 }
 
 static void gui_window_show_cb (void*, GtkWidget *window) {
@@ -256,7 +296,7 @@ static void gui_window_show_cb (void*, GtkWidget *window) {
 }
 
 void gui_activate (GtkApplication *app) {
-	PangoFontDescription* monospace = pango_font_description_from_string ("bold monospace");
+	PangoFontDescription* monospace = pango_font_description_from_string ("bold monospace bold 19");
 	GtkWidget *new_game = gtk_button_new_from_icon_name ("view-refresh-symbolic", 1);
 	GtkWidget *window = gtk_application_window_new (app);
 	GtkWidget *title_bar = gtk_header_bar_new ();
