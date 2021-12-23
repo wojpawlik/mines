@@ -38,10 +38,10 @@ void engine_coords (Engine *engine, EngineSquare *square, unsigned *x, unsigned 
 
 static void engine_plant (Engine *engine) {
 	int i, n;
-	for (i = 0; i < engine->flags; i++) {
+	for (i = 0; i < engine->mines; i++) {
 		do {
 			n = rand() % (engine->width * engine->height);
-		} while (engine->board[n]);
+		} while (engine->board[n] & ~Flag);
 		engine->board[n] = Mine;
 	}
 }
