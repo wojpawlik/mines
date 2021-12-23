@@ -7,7 +7,14 @@
 #include "engine.h"
 #include "gui.h"
 
-static GtkWidget *custom, *difficulty, *flags, *game_board, *height, *width, *mines, *stopwatch;
+const char *GAME_DESCRIPTION =
+	"Open all unmined squares.\n\n"
+	"Left click a closed square to open it and reveal mine count of adjacent squares.\n"
+	"Right click a closed square to (un-)flag it as mined.\n"
+	"Middle click an open square to open all (unflagged) adjacent squares.\n"
+	"Press F2 to restart the game.";
+
+static GtkWidget *custom, *description, *difficulty, *flags, *game_board, *height, *width, *mines, *stopwatch;
 static Engine engine = {0};
 static bool is_game_over;
 static GTimer *timer;
@@ -45,7 +52,7 @@ static void board_update (GtkWidget *event_box, const char *asset) {
 	);
 }
 
-static gboolean time_update (void*) {
+static gboolean time_update () {
 	if (is_game_over || !engine.opened) return false;
 	gtk_label_set_text(
 		GTK_LABEL (stopwatch),
@@ -210,7 +217,8 @@ static void mines_range_update (void) {
 	);
 }
 
-static void difficulty_set_preset (GtkButton*, char *difficulty) {
+static void difficulty_set_preset (GtkButton* _, char *difficulty) {
+	(void) _; /* unused */
 	gtk_spin_button_set_value (GTK_SPIN_BUTTON (width), difficulty[0]);
 	gtk_spin_button_set_value (GTK_SPIN_BUTTON (height), difficulty[1]);
 	gtk_spin_button_set_value (GTK_SPIN_BUTTON (mines), difficulty[2]);
@@ -291,8 +299,22 @@ static void gui_difficulty_init (void) {
 	);
 }
 
-static void gui_window_show_cb (void*, GtkWidget *window) {
-	gtk_widget_show_all(window);
+static void gui_window_show_cb (void *_, GtkWidget *window) {
+	(void) _; /* unused */
+	gtk_widget_show_all (window);
+}
+
+void gui_key_press (GtkWidget* _, GdkEventKey *event) {
+	(void) _; /* unused */
+	if (event->state) return;
+	switch (event->keyval) {
+	case GDK_KEY_F1:
+		gtk_widget_show_all (description);
+		break;
+	case GDK_KEY_F2:
+		board_init ();
+		break;
+	}
 }
 
 void gui_activate (GtkApplication *app) {
@@ -306,6 +328,13 @@ void gui_activate (GtkApplication *app) {
 	flags = gtk_label_new ("");
 	timer = g_timer_new ();
 	gui_difficulty_init ();
+	description = gtk_message_dialog_new (
+		GTK_WINDOW (window),
+		GTK_DIALOG_MODAL,
+		GTK_MESSAGE_INFO,
+		0,
+		GAME_DESCRIPTION
+	);
 
 	/* Structure */
 	gtk_container_add (GTK_CONTAINER (window), grid);
@@ -317,7 +346,9 @@ void gui_activate (GtkApplication *app) {
 	gtk_window_set_transient_for (GTK_WINDOW (difficulty), GTK_WINDOW (window));
 
 	/* Signals */
+	g_signal_connect (description, "delete-event", G_CALLBACK (gtk_widget_hide_on_delete), NULL);
 	g_signal_connect (new_game, "clicked", G_CALLBACK (gui_window_show_cb), difficulty);
+	g_signal_connect (window, "key-release-event", G_CALLBACK (gui_key_press), NULL);
 
 	/* Properties */
 	gtk_header_bar_set_show_close_button (GTK_HEADER_BAR (title_bar), true);
