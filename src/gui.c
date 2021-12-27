@@ -14,7 +14,9 @@ const char *GAME_DESCRIPTION =
 	"Middle click an open square to open all (unflagged) adjacent squares.\n"
 	"Press F2 to restart the game.";
 
-static GtkWidget *custom, *description, *difficulty, *flags, *game_board, *height, *width, *mines, *stopwatch;
+static GtkWidget *description, *difficulty, *game_board;
+static GtkWidget *custom, *height, *width, *mines;
+static GtkWidget *flags, *status, *stopwatch;
 static Engine engine = {0};
 static bool is_game_over;
 static GTimer *timer;
@@ -82,6 +84,7 @@ static void board_open (unsigned x, unsigned y) {
 	EngineSquare *square = engine_ptr (&engine, x, y);
 	if (!engine_open (&engine, square)) return;
 	if (*square & Mine) {
+		gtk_label_set_text (GTK_LABEL (status), "You lost. F2 to restart.");
 		board_update (event_box, ASSET_CLICKED_MINE);
 		game_over(ASSET_MINE);
 		return;
@@ -117,7 +120,7 @@ static void board_press (GtkWidget *event_box, gpointer event, EngineSquare *squ
 	guint button;
 	if (is_game_over) return;
 	gdk_event_get_button (event, &button);
-	if (button == 1 /* Left click */ && *square & ~Open) {
+	if (button == 1 /* Left click */ && !(*square & Open)) {
 		board_update (event_box, ASSET_PRESSED);
 	} else if (button == 2 /* middle click */) {
 		unsigned x, y;
@@ -159,6 +162,7 @@ static void board_click (GtkWidget *event_box, gpointer event, EngineSquare *squ
 		return;
 	}
 	if (engine.opened == engine.width * engine.height - engine.mines) {
+		gtk_label_set_text (GTK_LABEL (status), "You won! F2 to restart.");
 		game_over (ASSET_FLAG);
 	}
 }
@@ -170,9 +174,10 @@ static void board_init (void) {
 	unsigned height_ = gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (height));
 
 	is_game_over = false;
-	engine_alloc(&engine, width_, height_, mines_);
-	gtk_label_set_text(GTK_LABEL (stopwatch), "0");
-	gtk_label_set_text(GTK_LABEL (flags), stringify(engine.flags));
+	engine_alloc (&engine, width_, height_, mines_);
+	gtk_label_set_text (GTK_LABEL (stopwatch), "0");
+	gtk_label_set_text (GTK_LABEL (flags), stringify(engine.flags));
+	gtk_label_set_text (GTK_LABEL (status), "");
 
 	/* Clear board */
 	gtk_container_foreach (GTK_CONTAINER (game_board), (void*) gtk_widget_destroy, NULL);
@@ -325,6 +330,7 @@ void gui_activate (GtkApplication *app) {
 	GtkWidget *grid = gtk_grid_new ();
 	stopwatch = gtk_label_new ("");
 	game_board = gtk_grid_new ();
+	status = gtk_label_new ("");
 	flags = gtk_label_new ("");
 	timer = g_timer_new ();
 	gui_difficulty_init ();
@@ -339,6 +345,7 @@ void gui_activate (GtkApplication *app) {
 	/* Structure */
 	gtk_container_add (GTK_CONTAINER (window), grid);
 	gtk_grid_attach (GTK_GRID (grid), flags, 0, 1, 1, 1);
+	gtk_grid_attach (GTK_GRID (grid), status, 1, 1, 1, 1);
 	gtk_grid_attach (GTK_GRID (grid), stopwatch, 2, 1, 1, 1);
 	gtk_grid_attach (GTK_GRID (grid), game_board, 0, 2, 3, 1);
 	gtk_window_set_titlebar (GTK_WINDOW (window), title_bar);
