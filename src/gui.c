@@ -314,7 +314,8 @@ void gui_key_press (GtkWidget* _, GdkEventKey *event) {
 	if (event->state) return;
 	switch (event->keyval) {
 	case GDK_KEY_F1:
-		gtk_widget_show_all (description);
+		gtk_dialog_run (GTK_DIALOG (description));
+		gtk_widget_hide (description);
 		break;
 	case GDK_KEY_F2:
 		board_init ();
@@ -338,7 +339,7 @@ void gui_activate (GtkApplication *app) {
 		GTK_WINDOW (window),
 		GTK_DIALOG_MODAL,
 		GTK_MESSAGE_INFO,
-		0,
+		GTK_BUTTONS_CLOSE,
 		GAME_DESCRIPTION
 	);
 
@@ -353,7 +354,6 @@ void gui_activate (GtkApplication *app) {
 	gtk_window_set_transient_for (GTK_WINDOW (difficulty), GTK_WINDOW (window));
 
 	/* Signals */
-	g_signal_connect (description, "delete-event", G_CALLBACK (gtk_widget_hide_on_delete), NULL);
 	g_signal_connect (new_game, "clicked", G_CALLBACK (gui_window_show_cb), difficulty);
 	g_signal_connect (window, "key-release-event", G_CALLBACK (gui_key_press), NULL);
 
