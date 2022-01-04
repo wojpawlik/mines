@@ -161,7 +161,7 @@ static void board_click (GtkWidget *event_box, gpointer event, EngineSquare *squ
 		else if (!(*square & Open)) board_update (event_box, ASSET_UNFLAG);
 		return;
 	}
-	if (engine.opened == engine.width * engine.height - engine.mines) {
+	if (!is_game_over && engine.opened == engine.width * engine.height - engine.mines) {
 		gtk_label_set_text (GTK_LABEL (status), "You won! F2 to restart.");
 		game_over (ASSET_FLAG);
 	}
@@ -311,7 +311,7 @@ static void gui_window_show_cb (void *_, GtkWidget *window) {
 
 void gui_key_press (GtkWidget* _, GdkEventKey *event) {
 	(void) _; /* unused */
-	if (event->state) return;
+	if (event->state & (GDK_BUTTON1_MASK | GDK_BUTTON2_MASK)) return;
 	switch (event->keyval) {
 	case GDK_KEY_F1:
 		gtk_dialog_run (GTK_DIALOG (description));
